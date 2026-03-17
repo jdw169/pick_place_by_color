@@ -145,6 +145,18 @@ class pick_cube:
 
         # 4. Dip down to "grab" the part
         
+        waypoints = []
+        wpose = self.move_group.get_current_pose().pose
+        wpose.position.z = 0.045
+        waypoints.append(copy.deepcopy(wpose))
+        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.01)
+        if fraction < 0.9:
+            rospy.logerr(f"only planned {fraction*100}% of the lift! Aborting")
+            return
+        rospy.loginfo("Moving to drop-off zone...")
+        self.move_group.execute(plan, wait = True)
+        
+        """
         target_pose.position.z = 0.045 # Lower down toward the bed
         rospy.loginfo("Dipping to grasp height...")
         self.move_group.set_pose_target(target_pose)
@@ -152,7 +164,9 @@ class pick_cube:
         if not success:
             rospy.logerr("Failed to dip down! Stopping sequence.")
             return # Exit the function so it doesn't keep going
+        """
         # 5. Close the gripper
+        
         self.operate_gripper("closed")
 
         # 6. Lift the part back up
@@ -174,18 +188,7 @@ class pick_cube:
         rospy.loginfo("Move to drop off zone")
         self.move_group.set_pose_target(target_pose)
         self.move_group.go(wait=True)
-        """
-        waypoints = []
-        wpose = self.move_group.get_current_pose().pose
-        wpose.position.x = -0.25
-        waypoints.append(copy.deepcopy(wpose))
-        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.01)
-        if fraction < 0.9:
-            rospy.logerr(f"only planned {fraction*100}% of the lift! Aborting")
-            return
-        rospy.loginfo("Moving to drop-off zone...")
-        self.move_group.execute(plan, wait = True)
-        """
+
         # 9. Open gripper to drop the part
         self.operate_gripper("opened")
 
