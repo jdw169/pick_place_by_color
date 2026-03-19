@@ -142,7 +142,7 @@ class pick_cube_vision:
         target_pose = self.move_group.get_current_pose().pose
         target_pose.position.x = pick_up_x
         target_pose.position.y = pick_up_y
-        target_pose.position.z = 0.015
+        target_pose.position.z = 0.25
         rospy.loginfo("Move clamp closer...")
         self.move_group.set_pose_target(target_pose)
         success = self.move_group.go(wait=True)
@@ -154,13 +154,13 @@ class pick_cube_vision:
         # 4. Dip down to "grab" the part
         waypoints = []
         wpose = self.move_group.get_current_pose().pose
-        #wpose.position.z -= 0.2
+        wpose.position.z = 0.045
         waypoints.append(copy.deepcopy(wpose))
-        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.01)
+        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.02)
         if fraction < 0.9:
             rospy.logerr(f"only planned {fraction*100}% of the lift! Aborting")
             return
-        rospy.loginfo("Moving to drop-off zone...")
+        rospy.loginfo("Dip down to pick up")
         self.move_group.execute(plan, wait = True)
         
         """
@@ -182,7 +182,7 @@ class pick_cube_vision:
         self.move_group.set_pose_target(target_pose)
         self.move_group.go(wait=True)
 
-        # 7. Move to the intermediat waypoint (x=0 y=0.3)
+        # 7. Move to the intermediat waypoint
         target_pose.position.x = 0.3
         target_pose.position.y = 0.0
         
@@ -197,16 +197,37 @@ class pick_cube_vision:
         self.move_group.set_pose_target(target_pose)
         self.move_group.go(wait=True)
 
+        waypoints = []
+        wpose = self.move_group.get_current_pose().pose
+        wpose.position.z = 0.045
+        waypoints.append(copy.deepcopy(wpose))
+        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.02)
+        if fraction < 0.9:
+            rospy.logerr(f"only planned {fraction*100}% of the lift! Aborting")
+            return
+        rospy.loginfo("Dip down to drop off...")
+        self.move_group.execute(plan, wait = True)
+
         # 9. Open gripper to drop the part
         self.operate_gripper("opened")
-
+        waypoints = []
+        wpose = self.move_group.get_current_pose().pose
+        wpose.position.z = 0.35
+        waypoints.append(copy.deepcopy(wpose))
+        (plan,fraction) = self.move_group.compute_cartesian_path(waypoints, 0.02)
+        if fraction < 0.9:
+            rospy.logerr(f"only planned {fraction*100}% of the lift! Aborting")
+            return
+        rospy.loginfo("raise up after drop off...")
+        self.move_group.execute(plan, wait = True)
+        self.operate_gripper("closed")
         # 10. Return to the Standby Position
         
         rospy.loginfo("Returning to standby position...")
-        self.move_group.set_named_target("home")
-        #self.move_group.set_pose_target(standby_pose)
+        #self.move_group.set_named_target("home")
+        self.move_group.set_pose_target(standby_pose)
         self.move_group.go(wait=True)
-        self.operate_gripper("closed")
+
         rospy.loginfo("Pick-and-Place complete! ...")
 
     def vision_callback(self, msg):
@@ -215,7 +236,7 @@ class pick_cube_vision:
             return
         
         for box in msg.bounding_boxes:
-            if box.Class in ["kite","tvmonitor","cup"]:
+            if box.Class in ["kite","tvmonitor","cup","cube"]:
                 # 1. Find the center pixel of the bounding box
                 self.ispicking = True
                 center_u = (box.xmin + box.xmax) / 2.0
@@ -246,7 +267,7 @@ class pick_cube_vision:
                     
                     # 5. SEND TO MOVEIT!
                     # Now you can pass these exact X and Y coordinates to your pick_and_place function
-                    # self.pick_and_place(target_point_base.point.x, target_point_base.point.y,0.15,-0.25)
+                    self.pick_and_place(target_point_base.point.x, target_point_base.point.y,0.15,0.25)
                     
                 except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
                     rospy.logerr(f"TF Transform failed: {e}")

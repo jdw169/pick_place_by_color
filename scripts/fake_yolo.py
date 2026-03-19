@@ -15,12 +15,12 @@ def start_fake_camera():
         
         # Create a fake cube based on your real data
         fake_cube = BoundingBox()
-        fake_cube.Class = "kite"
+        fake_cube.Class = "cube"
         fake_cube.xmin = 335
         fake_cube.xmax = 483
         fake_cube.ymin = 36
         fake_cube.ymax = 269
-        fake_cube.z = 218.0  # 171 mm depth
+        fake_cube.z = 118.0 
         
         # Add it to the message array and publish
         msg.bounding_boxes.append(fake_cube)
